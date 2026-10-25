@@ -230,22 +230,49 @@ else
   unset ROOT_PASSWORD_CONFIRM
 
   printf '\nCreating Debian LXC %s...\n' "$CTID"
-  if ! pct create "$CTID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" \
-    --hostname "$HOSTNAME" \
-    --description "Groovebox CD Library managed installation" \
-    --ostype debian \
-    --cores "$CORES" \
-    --memory "$MEMORY" \
-    --rootfs "${ROOTFS_STORAGE}:${DISK}" \
-    --net0 "name=eth0,bridge=${BRIDGE},ip=dhcp" \
-    --unprivileged "$UNPRIVILEGED" \
-    --features nesting=1,keyctl=1 \
-    --onboot 1; then
+  create_container() {
+    pct create "$CTID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" \
+      --hostname "$HOSTNAME" \
+      --description "Groovebox CD Library managed installation" \
+      --ostype debian \
+      --cores "$CORES" \
+      --memory "$MEMORY" \
+      --rootfs "${ROOTFS_STORAGE}:${DISK}" \
+      --net0 "name=eth0,bridge=${BRIDGE},ip=dhcp" \
+      --unprivileged "$1" \
+      --features nesting=1,keyctl=1 \
+      --onboot 1
+  }
+
+  if ! create_container "$UNPRIVILEGED"; then
     if pct status "$CTID" >/dev/null 2>&1; then
       CT_CREATED=1
       fail "Proxmox reported an error creating CT $CTID, but the CT still exists. Inspect it before retrying."
     fi
-    fail "Proxmox could not create CT $CTID. Check storage capacity and permissions for the selected root-filesystem storage, then retry."
+    if [[ -e "/etc/pve/lxc/${CTID}.conf" ]]; then
+      fail "Proxmox could not create CT $CTID, and a container configuration remains at /etc/pve/lxc/${CTID}.conf. Inspect it before retrying."
+    fi
+
+    if [[ "$UNPRIVILEGED" -eq 1 ]]; then
+      printf '\nUnprivileged container creation failed before CT %s was created.\n' "$CTID" >&2
+      printf 'A rootfs extraction permission error can indicate this host/storage cannot create the mapped unprivileged rootfs.\n' >&2
+      read -r -p "Retry as a privileged container? This weakens host isolation. [y/N]: " RETRY_PRIVILEGED
+      if [[ "$RETRY_PRIVILEGED" =~ ^[Yy]$ ]]; then
+        UNPRIVILEGED=0
+        printf 'Retrying CT %s as privileged; review the isolation warning before continuing.\n' "$CTID" >&2
+        if ! create_container "$UNPRIVILEGED"; then
+          if pct status "$CTID" >/dev/null 2>&1; then
+            CT_CREATED=1
+            fail "Proxmox reported an error creating CT $CTID, but the CT still exists. Inspect it before retrying."
+          fi
+          fail "Proxmox could not create CT $CTID, even as a privileged container. Check thin-pool capacity and host rootfs permissions; see the installer troubleshooting section in the README."
+        fi
+      else
+        fail "Proxmox could not create the unprivileged CT. No privileged retry was made. Check thin-pool capacity and host rootfs permissions, then retry."
+      fi
+    else
+      fail "Proxmox could not create CT $CTID. Check thin-pool capacity and host rootfs permissions; see the installer troubleshooting section in the README."
+    fi
   fi
   CT_CREATED=1
   pct start "$CTID"

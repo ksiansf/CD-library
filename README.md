@@ -116,24 +116,30 @@ If `pct create` fails while extracting the Debian template with an error such
 as `tar: /var/lib/lxc/<CTID>/rootfs: Cannot open: Permission denied`, check
 the selected root-filesystem storage and its host permissions. The Proxmox
 installer lets you select an active storage that supports container root
-filesystems. If the storage cannot handle unprivileged container ownership,
-you can retry with a privileged container, but that reduces isolation from
-the Proxmox host.
+filesystems. If unprivileged creation fails before a CT is created, the
+installer offers an explicit retry as a privileged container. Accepting this
+reduces isolation from the Proxmox host; the installer never changes container
+privilege mode without confirmation. If creation also fails in privileged
+mode, changing privilege mode is not the cause and will not help.
 
 Also check thin-pool capacity before retrying. Warnings that thin-volume sizes
-exceed the pool or that the volume group has no free space indicate a Proxmox
-host storage-capacity problem; choosing a privileged container will **not**
-fix a full thin pool. On the Proxmox host, inspect storage and LVM usage:
+exceed the pool or that the volume group has no free space can indicate a
+Proxmox host storage-capacity problem even when `pvesm status` reports
+available thin-provisioned space. Choosing a privileged container will **not**
+fix a full thin pool. On the Proxmox host, inspect storage, thin-pool usage,
+and the mount permissions:
 
 ```sh
 pvesm status --content rootdir
 lvs -a -o vg_name,lv_name,lv_size,data_percent,metadata_percent
 df -h /var/lib/lxc
+ls -ld /var/lib/lxc
 ```
 
-Choose a root-filesystem storage with sufficient real free capacity, or
-resolve the host storage-space issue before retrying. If a failed attempt may
-have left a partial CT, inspect its status and config before reusing its ID:
+Choose a root-filesystem storage with sufficient real free capacity and
+working host permissions, or resolve the host storage issue before retrying.
+If a failed attempt may have left a partial CT, inspect its status and config
+before reusing its ID:
 
 ```sh
 pct status <CTID>
