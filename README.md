@@ -116,12 +116,17 @@ If `pct create` fails while extracting the Debian template with an error such
 as `tar: /var/lib/lxc/<CTID>/rootfs: Cannot open: Permission denied`, check
 the selected root-filesystem storage and its host permissions. The Proxmox
 installer lets you select an active storage that supports container root
-filesystems. At the installer prompt, pressing Enter for unprivileged
-container creation selects **yes**. If that attempt fails before a CT is created, the
-installer offers an explicit retry as a privileged container. Accepting this
-reduces isolation from the Proxmox host; the installer never changes container
-privilege mode without confirmation. If creation also fails in privileged
-mode, changing privilege mode is not the cause and will not help.
+filesystems. The installer must not set a restrictive global `umask` before
+running `pct create`: doing so can make `/var/lib/lxc/<CTID>` and its `rootfs`
+mode `0700`, preventing the mapped unprivileged UID from traversing those
+directories during extraction. The installer no longer changes the host
+umask globally; its temporary directory and credential files remain
+owner-only. If you previously downloaded the installer, rerun the one-line
+command to get this fix. At the installer prompt, pressing Enter for
+unprivileged container creation selects **yes**. If creation still fails, the
+installer offers an explicit privileged retry. Accepting this reduces
+isolation from the Proxmox host; the installer never changes container
+privilege mode without confirmation.
 
 Also check thin-pool capacity before retrying. Warnings that thin-volume sizes
 exceed the pool or that the volume group has no free space can indicate a
