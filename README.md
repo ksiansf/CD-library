@@ -35,32 +35,27 @@ downloads the app source, and starts Groovebox. It runs on the **Proxmox host
 shell as root**, not inside an existing LXC. It does not change existing
 containers.
 
-After this project and `proxmox-install.sh` have been published in a public
-GitHub repository, run the following on the Proxmox host, replacing the
-example GitHub owner and repository with the actual values:
+After the updated `proxmox-install.sh` has been pushed to the `main` branch
+of the public GitHub repository, run this command in the Proxmox host shell
+as root:
 
 ```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/OWNER/REPOSITORY/main/proxmox-install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ksiansf/CD-library/main/proxmox-install.sh)"
 ```
 
-The script prompts for the Groovebox source repository and branch, container
-ID, hostname, CPU, memory, disk, web port, and network bridge. It uses an
-active Proxmox storage for the Debian template and container disk, configures
-an unprivileged container with Nesting and keyctl, and asks you to set its
-root password. It also offers to configure Discogs: if enabled, enter the
+The script prompts for the source branch, container ID, hostname, CPU,
+memory, disk, web port, network bridge, and root password. It uses the
+published `ksiansf/CD-library` repository for the Groovebox source, creates
+an unprivileged container with Nesting and keyctl, and configures DHCP on the
+selected bridge. It also offers to configure Discogs: if enabled, enter the
 consumer key and secret at hidden prompts (they are not echoed to the
 terminal); if skipped, you can configure them later. The credentials are
 written to `/opt/groovebox/.env` inside the LXC with owner-only permissions
-and passed to the app by Docker Compose. The container uses DHCP on the
-selected bridge. At completion, the script prints the web address.
+and passed to the app by Docker Compose. At completion, the script prints
+the web address.
 
-This command is a template until the project is published: this local
-workspace does not have a configured public GitHub remote, so a working
-`raw.githubusercontent.com` URL cannot be supplied yet. The repository
-selected in the installer must be public and have the application files
-(`app.py`, `compose.yaml`, `Dockerfile`, and `static/`) at its root on the
-selected branch. Run remote install scripts only from a repository you trust;
-the command downloads and executes the script as root on the Proxmox host.
+Run remote install scripts only from a repository you trust; this command
+downloads and executes the script as root on the Proxmox host.
 
 The installer downloads the selected branch as source. For a later app update,
 copy the updated project files into `/opt/groovebox` inside the LXC, preserving

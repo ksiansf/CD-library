@@ -3,6 +3,8 @@ set -Eeuo pipefail
 umask 077
 
 APP="Groovebox"
+GITHUB_OWNER="ksiansf"
+GITHUB_REPO="CD-library"
 DEFAULT_CORES=1
 DEFAULT_MEMORY=1024
 DEFAULT_DISK=8
@@ -56,16 +58,6 @@ printf '\n%s Proxmox LXC installer\n' "$APP"
 printf 'This creates a new Debian 12 LXC and installs Docker Compose and Groovebox.\n'
 printf 'It does not modify existing containers.\n\n'
 
-while true; do
-  read -r -p "Public GitHub repository URL containing Groovebox (https://github.com/owner/repo): " REPO_URL
-  if [[ "$REPO_URL" =~ ^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)(\.git)?/?$ ]]; then
-    REPO_OWNER="${BASH_REMATCH[1]}"
-    REPO_NAME="${BASH_REMATCH[2]}"
-    break
-  fi
-  printf 'Enter a GitHub HTTPS repository URL, for example https://github.com/example/groovebox.\n' >&2
-done
-
 BRANCH="$(prompt_value 'Git branch to install' 'main')"
 [[ "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ && "$BRANCH" != /* && "$BRANCH" != *..* ]] ||
   fail "Invalid branch name."
@@ -118,10 +110,10 @@ ROOTFS_STORAGE="$(pvesm status --content rootdir | awk 'NR > 1 && $3 == "active"
 printf '\nDownloading Debian template %s...\n' "$TEMPLATE"
 pveam download "$TEMPLATE_STORAGE" "$TEMPLATE"
 
-printf 'Downloading Groovebox source from %s (%s)...\n' "$REPO_URL" "$BRANCH"
-ARCHIVE_URL="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/${BRANCH}"
+printf 'Downloading Groovebox source from https://github.com/%s/%s (%s)...\n' "$GITHUB_OWNER" "$GITHUB_REPO" "$BRANCH"
+ARCHIVE_URL="https://codeload.github.com/${GITHUB_OWNER}/${GITHUB_REPO}/tar.gz/refs/heads/${BRANCH}"
 curl --fail --location --silent --show-error --retry 3 "$ARCHIVE_URL" -o "$TEMP_DIR/source.tar.gz" ||
-  fail "Could not download the GitHub source archive. Check that the repository and branch exist and are public."
+  fail "Could not download the GitHub source archive. Check that https://github.com/${GITHUB_OWNER}/${GITHUB_REPO} is public and branch '${BRANCH}' exists."
 mkdir "$TEMP_DIR/source"
 tar -xzf "$TEMP_DIR/source.tar.gz" --strip-components=1 -C "$TEMP_DIR/source"
 [[ -f "$TEMP_DIR/source/compose.yaml" && -f "$TEMP_DIR/source/Dockerfile" &&
