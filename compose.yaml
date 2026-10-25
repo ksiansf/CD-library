@@ -1,0 +1,16 @@
+services:
+  cd-library:
+    build: .
+    container_name: cd-library
+    restart: unless-stopped
+    ports:
+      - "${CD_LIBRARY_PORT:-8080}:8080"
+    environment:
+      DATA_DIR: /data
+      PORT: 8080
+      DISCOGS_CONSUMER_KEY: "${DISCOGS_CONSUMER_KEY:-}"
+      DISCOGS_CONSUMER_SECRET: "${DISCOGS_CONSUMER_SECRET:-}"
+      DISCOGS_TOKEN: "${DISCOGS_TOKEN:-}"
+      CD_LIBRARY_CONTACT: "${CD_LIBRARY_CONTACT:-personal collection manager}"
+    volumes:
+      - ./data:/data
