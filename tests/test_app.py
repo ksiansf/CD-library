@@ -227,7 +227,15 @@ class CdLibraryTestCase(unittest.TestCase):
     def test_page_is_served_and_discogs_reports_missing_token(self):
         page = urllib.request.urlopen(self.base_url + "/")
         self.assertEqual(page.status, 200)
-        self.assertIn(b"Changer overview", page.read())
+        page_content = page.read()
+        self.assertIn(b"Changer overview", page_content)
+        self.assertIn(b"/media/PD-F958.png", page_content)
+
+        image = urllib.request.urlopen(self.base_url + "/media/PD-F958.png")
+        self.assertEqual(image.status, 200)
+        self.assertEqual(image.headers["Content-Type"], "image/png")
+        self.assertTrue(image.read().startswith(b"\x89PNG\r\n\x1a\n"))
+
         with patch.dict(
             os.environ,
             {

@@ -30,37 +30,41 @@ authentication, so restrict access to trusted devices and networks.
 
 ### Quick install from the Proxmox host
 
-The Proxmox helper creates a new Debian 12 LXC, installs Docker and Compose,
-downloads the app source, and starts Groovebox. It runs on the **Proxmox host
-shell as root**, not inside an existing LXC. It does not change existing
-containers.
+The Proxmox helper runs on the **Proxmox host shell as root**. It checks for
+an existing Groovebox LXC first: when one is found, it updates that container
+in place instead of creating another. Only when no existing Groovebox
+installation is detected does it create a new Debian 12 LXC, install Docker
+and Compose, and start the app.
 
 After the updated `proxmox-install.sh` has been pushed to the `main` branch
 of the public GitHub repository, run this command in the Proxmox host shell
-as root:
+as root. You can [view the installer source on GitHub](https://github.com/ksiansf/CD-library/blob/main/proxmox-install.sh).
 
 ```sh
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/ksiansf/CD-library/main/proxmox-install.sh)"
 ```
 
-The script prompts for the source branch, container ID, hostname, CPU,
-memory, disk, web port, network bridge, and root password. It uses the
-published `ksiansf/CD-library` repository for the Groovebox source, creates
-an unprivileged container with Nesting and keyctl, and configures DHCP on the
-selected bridge. It also offers to configure Discogs: if enabled, enter the
-consumer key and secret at hidden prompts (they are not echoed to the
-terminal); if skipped, you can configure them later. The credentials are
-written to `/opt/groovebox/.env` inside the LXC with owner-only permissions
-and passed to the app by Docker Compose. At completion, the script prints
-the web address.
+The script prompts for the source branch. For a new install, it also prompts
+for container ID, hostname, CPU, memory, disk, web port, network bridge,
+root-filesystem storage, and root password. New containers default to
+unprivileged with Nesting and keyctl and DHCP; you can choose a privileged
+container if needed, but that weakens isolation from the Proxmox host. The
+new-install path also offers Discogs credential setup; the consumer key and
+secret are visible as you type and saved in `/opt/groovebox/.env`.
+
+When updating, the script stops Groovebox, creates a timestamped backup of
+`data/` under `/var/backups/groovebox/` inside the LXC, and updates the app
+files. The existing `.env` and `data/` are left in place, preserving Discogs
+settings, the collection, artwork, and recorded changer slots. If multiple
+Groovebox installations are detected, the script asks which CTID to update.
+It does not create a new container when an existing Groovebox is found.
 
 Run remote install scripts only from a repository you trust; this command
 downloads and executes the script as root on the Proxmox host.
 
-The installer downloads the selected branch as source. For a later app update,
-copy the updated project files into `/opt/groovebox` inside the LXC, preserving
-its `.env` and `data/`, then run `bash /opt/groovebox/install.sh` there. See
-[Updates](#updates) for the backup and verification steps.
+Run the same Proxmox command again to update an existing Groovebox to the
+selected branch. Alternatively, update manually inside the LXC as described
+in [Updates](#updates).
 
 ### Manual installation
 
@@ -105,6 +109,39 @@ starts Groovebox. The LXC must have internet access, working DNS, and the
 **Nesting** feature enabled. Docker inside LXC depends on Proxmox host kernel
 and storage configuration; use the Debian VM alternative below if Docker does
 not run reliably in your LXC.
+
+### Troubleshooting LXC creation
+
+If `pct create` fails while extracting the Debian template with an error such
+as `tar: /var/lib/lxc/<CTID>/rootfs: Cannot open: Permission denied`, check
+the selected root-filesystem storage and its host permissions. The Proxmox
+installer lets you select an active storage that supports container root
+filesystems. If the storage cannot handle unprivileged container ownership,
+you can retry with a privileged container, but that reduces isolation from
+the Proxmox host.
+
+Also check thin-pool capacity before retrying. Warnings that thin-volume sizes
+exceed the pool or that the volume group has no free space indicate a Proxmox
+host storage-capacity problem; choosing a privileged container will **not**
+fix a full thin pool. On the Proxmox host, inspect storage and LVM usage:
+
+```sh
+pvesm status --content rootdir
+lvs -a -o vg_name,lv_name,lv_size,data_percent,metadata_percent
+df -h /var/lib/lxc
+```
+
+Choose a root-filesystem storage with sufficient real free capacity, or
+resolve the host storage-space issue before retrying. If a failed attempt may
+have left a partial CT, inspect its status and config before reusing its ID:
+
+```sh
+pct status <CTID>
+ls -l /etc/pve/lxc/<CTID>.conf
+```
+
+Do not remove an existing CT or storage volume unless you have confirmed it is
+only an abandoned failed install and contains no data you need.
 
 ### 3. Copy the application into the LXC
 

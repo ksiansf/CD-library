@@ -427,6 +427,13 @@ class CdLibraryHandler(BaseHTTPRequestHandler):
             except OSError as error:
                 self.send_error_json(f"Could not read application page: {error}", 500)
             return
+        if path == "/media/PD-F958.png":
+            try:
+                content = (APP_DIR / "media" / "PD-F958.png").read_bytes()
+                self.send_bytes(content, "image/png")
+            except OSError as error:
+                self.send_error_json(f"Could not read CD changer image: {error}", 500)
+            return
         if path == "/api/cds":
             query = urllib.parse.parse_qs(parsed.query).get("q", [""])[0].strip()
             with connect_db() as db:
