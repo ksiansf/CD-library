@@ -1,74 +1,382 @@
 # Groovebox — CD Library & Changer Manager
 
-Groovebox is a web application for cataloging CDs, searching album/artist/track metadata, and recording which discs are loaded in a 101-slot changer (slots 0–100). The changer overview shows all occupied and empty positions. It does not control the physical changer.
+Groovebox is a self-hosted web application for cataloging a CD collection and
+tracking discs in a 101-position changer. It is designed for use on a trusted
+home network and can be deployed with Docker Compose.
 
-## Run with Docker Compose
+The application records which CD is assigned to each changer slot (0–100); it
+does not control the physical changer. There are no user accounts or built-in
+authentication, so restrict access to trusted devices and networks.
 
-On a host with Docker Compose installed:
+## Features
 
-1. Copy this project to the host.
-2. Set `DISCOGS_CONSUMER_KEY` and `DISCOGS_CONSUMER_SECRET` to the values from your Discogs developer settings. Alternatively, set `DISCOGS_TOKEN` if you have a personal access token. Set `CD_LIBRARY_PORT` to a desired host port if needed.
-3. Start the application:
+- Add, edit, search, and remove CDs. Unloading a CD keeps it in the library.
+- Store album metadata, ordered track lists, and cover art.
+- Enter information manually or search MusicBrainz and Discogs, then review
+  and fill the entry form from a selected release.
+- Search the local CD library by album, artist, or track.
+- Open the **Track Library** tab to browse every track across all CDs. Search
+  by track title, track artist, album, album artist, or year. The table includes
+  artist, album, year, duration, and changer slot.
+- View the CD library in Gallery or Detailed view. Hover over a CD or loaded
+  slot to see its track list.
+- Load and unload CDs, move a loaded CD, or replace the CD assigned to a slot.
+  Slot 0 is shown separately in the load picker.
+- Choose light or dark theme.
+- Store the catalog and uploaded cover art in a persistent SQLite data
+  directory.
 
-   ```sh
-   docker compose up --build -d
-   ```
+## Proxmox deployment
 
-4. Open `http://<server-ip>:8080` (or the configured `CD_LIBRARY_PORT`) from a device on your network.
+### Quick install from the Proxmox host
 
-Compose stores the SQLite database and embedded cover images in `./data`, which is mounted into the container at `/data`. Keep this directory when upgrading or recreating the container. To back it up consistently, stop the service, copy `data`, then start it again:
+The Proxmox helper creates a new Debian 12 LXC, installs Docker and Compose,
+downloads the app source, and starts Groovebox. It runs on the **Proxmox host
+shell as root**, not inside an existing LXC. It does not change existing
+containers.
+
+After this project and `proxmox-install.sh` have been published in a public
+GitHub repository, run the following on the Proxmox host, replacing the
+example GitHub owner and repository with the actual values:
 
 ```sh
-docker compose stop
-# Copy the data directory to your backup location.
-docker compose start
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/OWNER/REPOSITORY/main/proxmox-install.sh)"
 ```
 
-To restore, stop the service, replace `data` with the backed-up directory, then start the service. Protect backups because they contain your catalog and uploaded artwork.
+The script prompts for the Groovebox source repository and branch, container
+ID, hostname, CPU, memory, disk, web port, and network bridge. It uses an
+active Proxmox storage for the Debian template and container disk, configures
+an unprivileged container with Nesting and keyctl, and asks you to set its
+root password. It also offers to configure Discogs: if enabled, enter the
+consumer key and secret at hidden prompts (they are not echoed to the
+terminal); if skipped, you can configure them later. The credentials are
+written to `/opt/groovebox/.env` inside the LXC with owner-only permissions
+and passed to the app by Docker Compose. The container uses DHCP on the
+selected bridge. At completion, the script prints the web address.
 
-### Proxmox and network access
+This command is a template until the project is published: this local
+workspace does not have a configured public GitHub remote, so a working
+`raw.githubusercontent.com` URL cannot be supplied yet. The repository
+selected in the installer must be public and have the application files
+(`app.py`, `compose.yaml`, `Dockerfile`, and `static/`) at its root on the
+selected branch. Run remote install scripts only from a repository you trust;
+the command downloads and executes the script as root on the Proxmox host.
 
-This container can run on a Proxmox host that supports Docker/Compose, commonly inside a Linux VM or LXC configured for Docker. Restrict the published port to your trusted LAN using the host/Proxmox firewall. The app does not provide user accounts or authentication; do not expose it directly to the public internet. If remote access beyond your LAN is needed, use a VPN or a trusted reverse proxy that enforces authentication.
+The installer downloads the selected branch as source. For a later app update,
+copy the updated project files into `/opt/groovebox` inside the LXC, preserving
+its `.env` and `data/`, then run `bash /opt/groovebox/install.sh` there. See
+[Updates](#updates) for the backup and verification steps.
 
-### Metadata providers
+### Manual installation
 
-- MusicBrainz searches use its public API. Network access is needed only for lookup. HTTPS uses the `certifi` CA bundle with certificate verification enabled. Set `CD_LIBRARY_CONTACT` to contact information in the API User-Agent, as requested by MusicBrainz.
-- Discogs lookups accept your consumer key and consumer secret (`DISCOGS_CONSUMER_KEY` and `DISCOGS_CONSUMER_SECRET`) or a personal access token (`DISCOGS_TOKEN`). Keep both values in the server-side `.env`; Compose passes them to the app, and they are never sent to the browser. The app fetches full release details and track listings after a result is selected.
-- Provider failures do not affect local catalog, search, or changer functions.
+The following walkthrough runs the application’s Docker container inside a
+Debian Proxmox LXC container. Docker inside an LXC requires nesting and depends
+on the Proxmox kernel, storage driver, and security configuration. If Docker
+does not start reliably in your LXC, use the Debian VM alternative below;
+Docker-in-a-VM is generally the more predictable Docker deployment.
 
-For a Compose `.env` file beside `compose.yaml`, use:
+### 1. Create a Debian LXC in Proxmox
+
+In the Proxmox web interface:
+
+1. Download a current Debian 12 (Bookworm) standard container template from
+   **local storage → CT Templates → Templates**.
+2. Select **Create CT** and choose a container ID and hostname, for example
+   `groovebox`.
+3. Set a strong root password, or configure an SSH public key.
+4. Select the Debian 12 template.
+5. Allocate at least **1 CPU core**, **1 GB RAM**, and **8 GB root disk**.
+   Increase disk space if you expect to upload many large cover images.
+6. Configure a network interface attached to your LAN bridge. DHCP with a
+   router reservation or a static address makes the app easy to find later.
+7. Create the container as **unprivileged** unless your Proxmox environment
+   has a specific requirement for a privileged container.
+8. Before starting it, select the CT and open **Options → Features → Edit**.
+   Enable **Nesting**. Enable **keyctl** if it is available in your Proxmox
+   version. These options allow Docker to run inside the LXC; they do not
+   guarantee every Docker storage driver will work on every host.
+9. Start the CT and open its console, or connect using SSH.
+
+Keep the LXC on a trusted LAN. The app has no login screen. Use the Proxmox
+firewall and/or the Debian firewall to allow the app port only from devices
+that should access the collection.
+
+### 2. Prepare the Debian LXC
+
+The automated installer runs inside a prepared Debian 12 (Bookworm) LXC; it
+does not create the LXC on the Proxmox host. It installs Docker Engine and the
+Compose plugin from Docker's official Debian repository, then builds and
+starts Groovebox. The LXC must have internet access, working DNS, and the
+**Nesting** feature enabled. Docker inside LXC depends on Proxmox host kernel
+and storage configuration; use the Debian VM alternative below if Docker does
+not run reliably in your LXC.
+
+### 3. Copy the application into the LXC
+
+First create the destination directory in the LXC as `root`:
+
+```sh
+mkdir -p /opt/groovebox
+```
+
+Copy the application files from your development computer to that directory.
+Use WinSCP, or run this command from PowerShell (replace the example address
+and local path with yours):
+
+```powershell
+scp -r "C:\path\to\CD library\app.py" `
+  "C:\path\to\CD library\compose.yaml" `
+  "C:\path\to\CD library\Dockerfile" `
+  "C:\path\to\CD library\requirements.txt" `
+  "C:\path\to\CD library\install.sh" `
+  "C:\path\to\CD library\static" `
+  root@192.168.1.50:/opt/groovebox/
+```
+
+The directory copied to `/opt/groovebox` should contain at least:
+
+```text
+app.py
+compose.yaml
+Dockerfile
+requirements.txt
+install.sh
+static/
+```
+
+Do not copy your Windows `.venv`, `.git`, `.env`, or local `data/` directory
+into the LXC. Keep any existing LXC `.env` and `data/` in place. The Docker
+image installs its own Python dependencies; the install script does not
+overwrite the LXC's existing settings or collection data.
+
+### 4. Configure Discogs (optional)
+
+Metadata lookup from MusicBrainz does not require an account. Discogs lookup
+needs either a consumer key and consumer secret or a personal access token.
+To configure Discogs after installation (or if you skipped the credentials
+prompt in the Proxmox installer), create/edit the server-side `.env` file next
+to `compose.yaml`:
+
+```sh
+cd /opt/groovebox
+nano .env
+```
+
+Example contents:
 
 ```dotenv
 DISCOGS_CONSUMER_KEY=your_consumer_key
 DISCOGS_CONSUMER_SECRET=your_consumer_secret
+# Alternatively, use DISCOGS_TOKEN instead of the consumer key and secret.
+# DISCOGS_TOKEN=your_personal_access_token
 CD_LIBRARY_CONTACT=you@example.com
 CD_LIBRARY_PORT=8080
 ```
 
-Do not commit `.env` or share the credentials. Set `CD_LIBRARY_CONTACT` to an appropriate contact value for the MusicBrainz API User-Agent.
+Set `CD_LIBRARY_CONTACT` to contact information suitable for the MusicBrainz
+API User-Agent. If you do not need Discogs, leave the credential variables
+unset or blank. Protect the `.env` file because it contains credentials:
+
+```sh
+chmod 600 .env
+docker compose up -d
+```
+
+Keep `.env` private; do not commit it to source control or share it. The
+credentials are passed to the container and are not sent to the browser.
+The Proxmox installer accepts consumer keys and secrets containing letters,
+digits, underscores, and hyphens; for other credential formats, configure
+them manually in `.env`.
+
+### 5. Install and start Groovebox
+
+Connect to the LXC and run the installer as `root`:
+
+```sh
+cd /opt/groovebox
+bash ./install.sh
+```
+
+The script checks that it is running as root in Debian 12 and that the
+application files are present. It installs and starts Docker, checks the
+Compose configuration, creates `data/` if needed, then builds and launches
+the app. On a fresh install, the app starts with an empty catalog. When
+re-running it with existing data, the script stops the running app for a
+consistent backup, saves the data directory under
+`/var/backups/groovebox/`, then rebuilds and starts the app. Existing `.env`
+and `data/` contents are preserved.
+
+Check the service status and logs if needed:
+
+```sh
+cd /opt/groovebox
+docker compose ps
+docker compose logs --tail=100 cd-library
+```
+
+Open the app from a device on the same network:
+
+```text
+http://<LXC-IP>:8080
+```
+
+For example, if the LXC address is `192.168.1.50`, open
+`http://192.168.1.50:8080`.
+
+`CD_LIBRARY_PORT` in `.env` changes the host-side port. For example, setting
+`CD_LIBRARY_PORT=8090` in `.env` publishes the app on
+`http://<LXC-IP>:8090`; the application still listens on port `8080` inside
+Docker. Run `bash ./install.sh` again to apply changed Compose settings.
+
+If the page is unreachable, check `docker compose ps` and
+`docker compose logs --tail=100 cd-library`, confirm the LXC has the expected
+LAN address, and verify that TCP port `8080` (or your configured host port) is
+allowed by the Proxmox and guest firewalls.
+
+### Debian VM alternative
+
+If Docker fails in the LXC because of kernel, storage, or nesting restrictions,
+create a small Debian 12 VM in Proxmox instead. Assign it a LAN address, copy
+the project files to `/opt/groovebox`, then follow the configuration and
+installation steps above. The installer also works in a Debian 12 VM. The
+browser address, Compose configuration, and backup procedure are the same.
+
+## Updates
+
+The catalog database in `data/` stores your CDs, tracks, cover art, and the
+changer slot assigned to each CD. That slot assignment is Groovebox's record
+of what should be loaded in the physical changer; the application does not
+control or inspect the changer itself. Keeping `data/` intact therefore
+preserves both your collection and its recorded loaded-slot state.
+
+Before each update, make a backup and stop the service so the database is not
+being written during the backup:
+
+```sh
+cd /opt/groovebox
+docker compose stop
+tar -czf /root/groovebox-before-update-$(date +%F-%H%M%S).tar.gz data
+```
+
+Copy that archive to storage outside the LXC before proceeding, so it is still
+available if the LXC itself has a problem.
+
+Using the transfer method in step 3 above, copy the new application files from
+your development computer to `/opt/groovebox`, overwriting only application
+files such as `app.py`, `static/`, `Dockerfile`, `requirements.txt`,
+`compose.yaml`, and `install.sh`. Do **not** copy your development `data/`,
+`.env`, or `.venv/` over the LXC files. Keep the existing `data/` and `.env`;
+review any intentional Compose changes before replacing `compose.yaml`.
+
+Run the installer to make a consistent pre-update backup and rebuild:
+
+```sh
+cd /opt/groovebox
+bash ./install.sh
+docker compose logs --tail=100 cd-library
+```
+
+When `data/` is non-empty, the script creates a timestamped archive in
+`/var/backups/groovebox/` before starting the updated app. Copy that backup
+off the LXC before relying on it for disaster recovery. Open Groovebox and
+confirm your CDs and recorded loaded-slot assignments are still present. Do
+not remove `data/` or run `docker compose down -v` during an update. The
+Compose file uses a host bind mount (`./data:/data`), so rebuilding the app
+container does not remove the collection. Keep the backup until the updated
+app is confirmed working.
+
+If an update fails, stop the service and keep the backup. Restore the previous
+application files and, if the update changed the database format, restore the
+matching pre-update `data/` backup as well before starting the old version.
+Do not restore an old database into a newer app, or use a pre-update database
+with a newer app whose data migrations have already changed it, unless that
+upgrade path is known to be compatible.
+
+The Compose service uses `restart: unless-stopped`, so Docker will start the
+app again when the Docker daemon or LXC restarts.
+
+## Backups and restore
+
+The `data/` directory contains the SQLite database and uploaded cover images.
+Back it up regularly. For a consistent manual backup, stop the service, copy
+the directory to storage outside the LXC, then start the service again:
+
+```sh
+cd /opt/groovebox
+docker compose stop
+tar -czf /root/groovebox-data-$(date +%F).tar.gz data
+docker compose start
+```
+
+Copy the resulting archive off the LXC to storage that is also protected by
+your regular backup plan. Proxmox LXC backups are useful as an additional
+recovery layer, but keep an independent copy of important data.
+
+To restore a data archive, stop the service, preserve the current data
+directory, extract the backup into `/opt/groovebox`, and restart:
+
+```sh
+cd /opt/groovebox
+docker compose stop
+mv data "data-before-restore-$(date +%F-%H%M%S)"
+tar -xzf /root/groovebox-data-YYYY-MM-DD.tar.gz
+docker compose start
+```
+
+The archive created above contains the `data/` directory at its top level.
+Keep the backup private: it contains the CD catalog and uploaded artwork.
+
+## Security and network access
+
+- Groovebox does **not** provide user accounts, passwords, or built-in
+  authentication. Do not expose it directly to the public internet.
+- Restrict the published port to trusted devices using the Proxmox firewall,
+  your router/firewall, and the Debian guest firewall as appropriate.
+- For access while away from home, connect through a VPN. If using a reverse
+  proxy, configure authentication and HTTPS there, and do not publish the
+  app's unauthenticated port to the internet.
+- Store Discogs credentials in the server-side `.env` file only. Restrict file
+  permissions and protect backups.
+
+## Metadata providers
+
+- [MusicBrainz API documentation](https://musicbrainz.org/doc/MusicBrainz_API):
+  release search and track metadata. HTTPS certificate verification is
+  enabled using the `certifi` CA bundle.
+- [Discogs API documentation](https://www.discogs.com/developers):
+  release search and full release details. Configure Discogs consumer
+  credentials or a personal access token as described above.
+- Metadata lookup requires internet access from the app host. Local catalog
+  management, searching, and changer assignments do not depend on either
+  metadata provider being available.
 
 ## Run locally
 
-Requires Python 3.10 or newer. Install the dependencies into the project virtual environment before starting. The app reads credentials from `.env` automatically; environment variables already set in the shell take precedence:
+Requires Python 3.10 or newer. From PowerShell in the project directory:
 
 ```powershell
 & .\.venv\bin\python.exe -m pip install -r requirements.txt
 & .\.venv\bin\python.exe app.py
 ```
 
-Open `http://localhost:8080`. By default, application data is written to `.\data`. Set `DATA_DIR` to choose another persistent directory. Set `PORT` to change the listening port.
+Open `http://localhost:8080`. The app reads credentials from `.env`
+automatically; environment variables already set in the shell take precedence.
+By default, local application data is written to `.\data`. Set `DATA_DIR` to
+choose another persistent directory and `PORT` to change the listening port.
 
 ## Tests
 
 ```powershell
-python -m unittest discover -s tests -v
+& .\.venv\bin\python.exe -m unittest discover -s tests -v
 ```
 
-## Included capabilities
+## Project files
 
-- Add, edit, search, and remove CD records with track lists and cover art.
-- Search MusicBrainz and Discogs and review release results before saving.
-- Search the local collection by album, artist, or track.
-- Assign, move, and unload CDs in slots 0–100 while enforcing unique assignments.
-- Gallery and detailed CD views, plus a searchable Track Library table showing track and album artists, album, year, duration, and changer slot; persisted light/dark theme selection.
-- Persistent SQLite storage suitable for container-volume backups.
+- `app.py` — HTTP API, metadata lookups, and SQLite persistence.
+- `static/index.html` — web interface.
+- `install.sh` — Debian 12 Docker setup, data backup, and app deployment.
+- `proxmox-install.sh` — Proxmox host helper to create an LXC and deploy the app.
+- `Dockerfile` and `compose.yaml` — container build, service, port, environment,
+  and persistent data mount.
+- `data/` — runtime database and uploaded artwork; preserve for upgrades and
+  include in backups.
