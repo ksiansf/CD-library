@@ -74,6 +74,7 @@ class CdLibraryTestCase(unittest.TestCase):
                 "title": "Night Drive",
                 "artist": "The Example",
                 "year": "2001",
+                "cover_url": "https://covers.example/night-drive.jpg",
                 "tracks": [
                     {"title": "Silver Roads", "duration": "3:45"},
                     {"title": "Last Light", "artist": "Guest Singer"},
@@ -102,7 +103,9 @@ class CdLibraryTestCase(unittest.TestCase):
         self.assertEqual(tracks[1]["album_artist"], "The Example")
         self.assertEqual(tracks[1]["duration"], "3:45")
         self.assertEqual(tracks[1]["slot"], 9)
+        self.assertEqual(tracks[1]["cover"], "https://covers.example/night-drive.jpg")
         self.assertEqual(tracks[2]["artist"], "Guest Singer")
+        self.assertEqual(tracks[2]["cover"], "https://covers.example/night-drive.jpg")
         self.assertIsNone(tracks[0]["slot"])
 
         self.assertEqual(

@@ -452,7 +452,9 @@ class CdLibraryHandler(BaseHTTPRequestHandler):
                 rows = db.execute(
                     """SELECT t.id, t.position, t.title, t.artist AS track_artist,
                     t.duration, c.id AS cd_id, c.title AS album, c.artist AS album_artist,
-                    c.year, c.slot
+                    c.year, c.slot,
+                    CASE WHEN c.cover_data != '' THEN '/api/cds/' || c.id || '/cover'
+                    ELSE c.cover_url END AS cover
                     FROM tracks t JOIN cds c ON c.id = t.cd_id
                     WHERE ? = '' OR t.title LIKE ? OR t.artist LIKE ?
                     OR c.title LIKE ? OR c.artist LIKE ? OR c.year LIKE ?
