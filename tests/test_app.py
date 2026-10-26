@@ -53,6 +53,13 @@ class CdLibraryTestCase(unittest.TestCase):
             {"title": title, "artist": artist, "tracks": tracks or []},
         )
 
+    def test_favicon_route_serves_svg_icon(self):
+        response = urllib.request.urlopen(self.base_url + "/favicon.svg", timeout=2)
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.headers.get_content_type(), "image/svg+xml")
+        self.assertIn("<svg", response.read().decode("utf-8"))
+
     def test_create_search_and_delete_cd_with_tracks(self):
         status, created = self.add_cd("Night Drive", tracks=[{"title": "Silver Roads"}])
         self.assertEqual(status, 201)

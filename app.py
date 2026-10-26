@@ -427,6 +427,13 @@ class CdLibraryHandler(BaseHTTPRequestHandler):
             except OSError as error:
                 self.send_error_json(f"Could not read application page: {error}", 500)
             return
+        if path == "/favicon.svg":
+            try:
+                content = (APP_DIR / "static" / "favicon.svg").read_bytes()
+                self.send_bytes(content, "image/svg+xml")
+            except OSError as error:
+                self.send_error_json(f"Could not read page icon: {error}", 500)
+            return
         if path == "/media/PD-F958.png":
             try:
                 content = (APP_DIR / "media" / "PD-F958.png").read_bytes()
