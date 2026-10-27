@@ -319,6 +319,7 @@ class CdLibraryTestCase(unittest.TestCase):
         self.assertEqual(page.status, 200)
         page_content = page.read()
         self.assertIn(b"Changer overview", page_content)
+        self.assertLess(page_content.index(b'class="regular-slots"'), page_content.index(b'class="special-slot-area"'))
         self.assertIn(b'id="carousel-feature"', page_content)
         self.assertIn(b"class=\"carousel-feature-header\"", page_content)
         self.assertIn(b"align-items:flex-start;justify-content:center", page_content)
