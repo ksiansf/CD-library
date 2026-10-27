@@ -11,6 +11,7 @@ authentication, so restrict access to trusted devices and networks.
 ## Features
 
 - Add, edit, search, and remove CDs. Unloading a CD keeps it in the library.
+- Filter the CD library to show only CDs that are not loaded in the changer.
 - Store album metadata, ordered track lists, and cover art.
 - Enter information manually or search MusicBrainz and Discogs, then review
   and fill the entry form from a selected release.

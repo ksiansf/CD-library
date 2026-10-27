@@ -73,6 +73,30 @@ class CdLibraryTestCase(unittest.TestCase):
         self.assertEqual(self.request(f"/api/cds/{cd_id}", "DELETE")[0], 200)
         self.assertEqual(self.request("/api/cds")[1], [])
 
+    def test_cd_library_filters_unloaded_cds_and_keeps_search(self):
+        unloaded = self.add_cd("Night Drive", tracks=[{"title": "Silver Roads"}])[1]
+        loaded = self.add_cd("Daylight", tracks=[{"title": "Morning Song"}])[1]
+        self.request("/api/slots/9", "POST", {"cd_id": loaded["id"]})
+
+        self.assertEqual(
+            {cd["id"] for cd in self.request("/api/cds")[1]},
+            {unloaded["id"], loaded["id"]},
+        )
+        self.assertEqual(
+            [cd["id"] for cd in self.request("/api/cds?status=unloaded")[1]],
+            [unloaded["id"]],
+        )
+        self.assertEqual(
+            [cd["id"] for cd in self.request("/api/cds?status=unloaded&q=Silver")[1]],
+            [unloaded["id"]],
+        )
+        self.assertEqual(
+            [cd["id"] for cd in self.request("/api/cds?status=loaded")[1]],
+            [loaded["id"]],
+        )
+        self.assertEqual(self.request("/api/cds?status=none")[1], [])
+        self.assertEqual(self.request("/api/cds?status=invalid")[0], 400)
+
     def test_track_library_lists_tracks_and_searches_album_artist_and_track(self):
         _, first = self.request(
             "/api/cds",
@@ -239,6 +263,8 @@ class CdLibraryTestCase(unittest.TestCase):
         self.assertEqual(page.status, 200)
         page_content = page.read()
         self.assertIn(b"Changer overview", page_content)
+        self.assertIn(b'id="loaded-filter"', page_content)
+        self.assertIn(b'id="unloaded-filter"', page_content)
         self.assertIn(b"/media/PD-F958.png", page_content)
 
         image = urllib.request.urlopen(self.base_url + "/media/PD-F958.png")

@@ -50,6 +50,7 @@ The application provides a searchable catalog of the user's CD collection and ke
 - **FR-21 — Open CD details:** The user can open a result to see the CD's metadata, cover art, track list, and changer status.
 - **FR-22 — Browse the collection:** The user can browse the full collection without performing a search.
 - **FR-23 — Find a song's CD:** Selecting or searching for a song identifies the CD containing that track and shows where the CD is loaded, if applicable.
+- **FR-23a — Filter unloaded CDs:** The user can filter the CD library to show only CDs that are not currently loaded in the changer.
 
 ### 3.5 Collection presentation
 

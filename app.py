@@ -442,13 +442,29 @@ class CdLibraryHandler(BaseHTTPRequestHandler):
                 self.send_error_json(f"Could not read CD changer image: {error}", 500)
             return
         if path == "/api/cds":
-            query = urllib.parse.parse_qs(parsed.query).get("q", [""])[0].strip()
+            parameters = urllib.parse.parse_qs(parsed.query)
+            query = parameters.get("q", [""])[0].strip()
+            status = parameters.get("status", ["all"])[0].strip()
+            if status not in {"all", "loaded", "unloaded", "none"}:
+                self.send_error_json("CD status must be 'all', 'loaded', 'unloaded', or 'none'.")
+                return
             with connect_db() as db:
                 rows = db.execute(
                     """SELECT DISTINCT c.* FROM cds c LEFT JOIN tracks t ON t.cd_id=c.id
-                    WHERE ? = '' OR c.title LIKE ? OR c.artist LIKE ? OR t.title LIKE ? OR t.artist LIKE ?
+                    WHERE (? = 'all' OR (? = 'loaded' AND c.slot IS NOT NULL)
+                    OR (? = 'unloaded' AND c.slot IS NULL))
+                    AND (? = '' OR c.title LIKE ? OR c.artist LIKE ? OR t.title LIKE ? OR t.artist LIKE ?)
                     ORDER BY c.title COLLATE NOCASE, c.artist COLLATE NOCASE""",
-                    (query, f"%{query}%", f"%{query}%", f"%{query}%", f"%{query}%"),
+                    (
+                        status,
+                        status,
+                        status,
+                        query,
+                        f"%{query}%",
+                        f"%{query}%",
+                        f"%{query}%",
+                        f"%{query}%",
+                    ),
                 ).fetchall()
                 self.send_json([get_cd(db, row["id"]) for row in rows])
             return
