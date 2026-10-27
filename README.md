@@ -12,6 +12,7 @@ authentication, so restrict access to trusted devices and networks.
 
 - Add, edit, search, and remove CDs. Unloading a CD keeps it in the library.
 - Filter the CD library to show only CDs that are not loaded in the changer.
+- Sort the CD library by artist, album, year, or loaded changer slot.
 - Store album metadata, ordered track lists, and cover art.
 - Enter information manually or search MusicBrainz and Discogs, then review
   and fill the entry form from a selected release.
@@ -22,7 +23,9 @@ authentication, so restrict access to trusted devices and networks.
 - View the CD library in Gallery or Detailed view. Hover over a CD or loaded
   slot to see its track list.
 - Load and unload CDs, move a loaded CD, or replace the CD assigned to a slot.
-  Slot 0 is shown separately in the load picker.
+  Selecting a loaded slot lets you unload its CD, swap it with a CD in another
+  loaded slot, or move it to an empty slot. Slot 0 is shown separately in the
+  load picker.
 - Choose light or dark theme.
 - Store the catalog and uploaded cover art in a persistent SQLite data
   directory.

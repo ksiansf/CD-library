@@ -445,8 +445,18 @@ class CdLibraryHandler(BaseHTTPRequestHandler):
             parameters = urllib.parse.parse_qs(parsed.query)
             query = parameters.get("q", [""])[0].strip()
             status = parameters.get("status", ["all"])[0].strip()
+            sort = parameters.get("sort", ["album"])[0].strip()
             if status not in {"all", "loaded", "unloaded", "none"}:
                 self.send_error_json("CD status must be 'all', 'loaded', 'unloaded', or 'none'.")
+                return
+            order_by = {
+                "album": "c.title COLLATE NOCASE, c.artist COLLATE NOCASE",
+                "artist": "c.artist COLLATE NOCASE, c.title COLLATE NOCASE",
+                "year": "c.year = '', c.year COLLATE NOCASE, c.title COLLATE NOCASE",
+                "slot": "c.slot IS NULL, c.slot, c.title COLLATE NOCASE",
+            }
+            if sort not in order_by:
+                self.send_error_json("CD sort must be 'album', 'artist', 'year', or 'slot'.")
                 return
             with connect_db() as db:
                 rows = db.execute(
@@ -454,7 +464,7 @@ class CdLibraryHandler(BaseHTTPRequestHandler):
                     WHERE (? = 'all' OR (? = 'loaded' AND c.slot IS NOT NULL)
                     OR (? = 'unloaded' AND c.slot IS NULL))
                     AND (? = '' OR c.title LIKE ? OR c.artist LIKE ? OR t.title LIKE ? OR t.artist LIKE ?)
-                    ORDER BY c.title COLLATE NOCASE, c.artist COLLATE NOCASE""",
+                    ORDER BY """ + order_by[sort],
                     (
                         status,
                         status,
@@ -610,9 +620,52 @@ class CdLibraryHandler(BaseHTTPRequestHandler):
             return
         try:
             payload = self.read_json()
+        except ValueError as error:
+            self.send_error_json(str(error))
+            return
+        if "swap_with" in payload:
+            try:
+                other_slot = int(payload["swap_with"])
+            except (ValueError, TypeError):
+                self.send_error_json("Choose a valid slot to swap with.")
+                return
+            if not 0 <= other_slot <= 100 or other_slot == slot:
+                self.send_error_json("Choose a different slot between 0 and 100.")
+                return
+            try:
+                with connect_db() as db:
+                    db.execute("BEGIN IMMEDIATE")
+                    occupied = {
+                        row["slot"]: row["id"]
+                        for row in db.execute(
+                            "SELECT id, slot FROM cds WHERE slot IN (?, ?)",
+                            (slot, other_slot),
+                        ).fetchall()
+                    }
+                    if len(occupied) != 2:
+                        self.send_error_json("Both slots must contain a CD to swap.")
+                        return
+                    db.execute(
+                        "UPDATE cds SET slot = NULL WHERE slot IN (?, ?)",
+                        (slot, other_slot),
+                    )
+                    db.execute("UPDATE cds SET slot = ? WHERE id = ?", (slot, occupied[other_slot]))
+                    db.execute(
+                        "UPDATE cds SET slot = ? WHERE id = ?",
+                        (other_slot, occupied[slot]),
+                    )
+                    self.send_json({"slots": [slot, other_slot], "swapped": True})
+            except sqlite3.IntegrityError:
+                self.send_error_json(
+                    "The slot assignment conflicts with another change. Refresh and try again.", 409
+                )
+            return
+        try:
             cd_id = int(payload.get("cd_id"))
         except (ValueError, TypeError) as error:
-            self.send_error_json(str(error) if isinstance(error, ValueError) else "Choose a valid CD.")
+            self.send_error_json(
+                str(error) if isinstance(error, ValueError) else "Choose a valid CD."
+            )
             return
         try:
             with connect_db() as db:

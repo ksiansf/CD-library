@@ -97,6 +97,37 @@ class CdLibraryTestCase(unittest.TestCase):
         self.assertEqual(self.request("/api/cds?status=none")[1], [])
         self.assertEqual(self.request("/api/cds?status=invalid")[0], 400)
 
+    def test_cd_library_sorts_by_artist_album_year_and_slot(self):
+        cds = {}
+        for title, artist, year in [
+            ("Zulu", "Beta", "2005"),
+            ("Alpha", "Alpha", "1998"),
+            ("Mike", "Alpha", "2001"),
+        ]:
+            cds[title] = self.request(
+                "/api/cds", "POST", {"title": title, "artist": artist, "year": year}
+            )[1]
+        self.request("/api/slots/8", "POST", {"cd_id": cds["Zulu"]["id"]})
+        self.request("/api/slots/2", "POST", {"cd_id": cds["Alpha"]["id"]})
+
+        self.assertEqual(
+            [cd["title"] for cd in self.request("/api/cds?sort=artist")[1]],
+            ["Alpha", "Mike", "Zulu"],
+        )
+        self.assertEqual(
+            [cd["title"] for cd in self.request("/api/cds?sort=album")[1]],
+            ["Alpha", "Mike", "Zulu"],
+        )
+        self.assertEqual(
+            [cd["title"] for cd in self.request("/api/cds?sort=year")[1]],
+            ["Alpha", "Mike", "Zulu"],
+        )
+        self.assertEqual(
+            [cd["slot"] for cd in self.request("/api/cds?sort=slot")[1]],
+            [2, 8, None],
+        )
+        self.assertEqual(self.request("/api/cds?sort=invalid")[0], 400)
+
     def test_track_library_lists_tracks_and_searches_album_artist_and_track(self):
         _, first = self.request(
             "/api/cds",
@@ -211,6 +242,31 @@ class CdLibraryTestCase(unittest.TestCase):
         self.assertEqual(self.request("/api/slots/100", "DELETE")[1]["unloaded"], True)
         self.assertIsNone(self.request(f"/api/cds/{first['id']}")[1]["slot"])
 
+    def test_swapping_loaded_cds_keeps_both_loaded(self):
+        first = self.add_cd("First album")[1]
+        second = self.add_cd("Second album")[1]
+        third = self.add_cd("Third album")[1]
+        self.request("/api/slots/0", "POST", {"cd_id": first["id"]})
+        self.request("/api/slots/2", "POST", {"cd_id": second["id"]})
+        self.request("/api/slots/3", "POST", {"cd_id": third["id"]})
+
+        status, result = self.request("/api/slots/0", "POST", {"swap_with": 2})
+
+        self.assertEqual(status, 200)
+        self.assertEqual(result, {"slots": [0, 2], "swapped": True})
+        cds = {cd["id"]: cd for cd in self.request("/api/cds")[1]}
+        self.assertEqual(cds[first["id"]]["slot"], 2)
+        self.assertEqual(cds[second["id"]]["slot"], 0)
+        self.assertEqual(cds[third["id"]]["slot"], 3)
+
+    def test_swapping_slots_requires_two_different_occupied_slots(self):
+        cd = self.add_cd("Loaded album")[1]
+        self.request("/api/slots/0", "POST", {"cd_id": cd["id"]})
+
+        self.assertEqual(self.request("/api/slots/0", "POST", {"swap_with": 0})[0], 400)
+        self.assertEqual(self.request("/api/slots/0", "POST", {"swap_with": 1})[0], 400)
+        self.assertEqual(self.request("/api/slots/0", "POST", {"swap_with": 101})[0], 400)
+
     def test_replacing_occupied_slot_unloads_previous_cd(self):
         previous = self.add_cd("Previous album")[1]
         replacement = self.add_cd("Replacement album")[1]
@@ -263,8 +319,14 @@ class CdLibraryTestCase(unittest.TestCase):
         self.assertEqual(page.status, 200)
         page_content = page.read()
         self.assertIn(b"Changer overview", page_content)
+        self.assertIn(b"openOccupiedSlotActions", page_content)
+        self.assertIn(b"Swap with a loaded CD", page_content)
+        self.assertIn(b"Move this CD to an empty slot", page_content)
         self.assertIn(b'id="loaded-filter"', page_content)
         self.assertIn(b'id="unloaded-filter"', page_content)
+        self.assertIn(b'id="cd-sort"', page_content)
+        for sort_option in (b"Album", b"Artist", b"Year", b"Loaded slot"):
+            self.assertIn(sort_option, page_content)
         self.assertIn(b"/media/PD-F958.png", page_content)
 
         image = urllib.request.urlopen(self.base_url + "/media/PD-F958.png")
