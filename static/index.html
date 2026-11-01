@@ -93,6 +93,9 @@
     .candidate-cover-popup{position:fixed;z-index:50;width:220px;padding:7px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:var(--shadow);pointer-events:none}
     .candidate-cover-popup[hidden]{display:none}
     .candidate-cover-popup img{display:block;width:100%;aspect-ratio:1;object-fit:contain;border-radius:5px;background:var(--panel2)}
+    .transport-controls{grid-column:2;grid-row:1;justify-self:center;display:flex;align-items:center;gap:8px;min-width:0;max-width:100%}.power-control{display:flex;align-items:center;padding:4px;border:1px solid var(--line);border-radius:11px;background:var(--panel);flex:0 0 auto}.transport-controls .transport-panel{grid-column:auto;grid-row:auto;justify-self:auto;flex:0 0 auto}.transport-controls .power-control .transport-button{color:var(--danger)}.transport-controls .power-control .transport-button:hover{border-color:var(--danger);background:var(--panel2)}
+    @media(max-width:900px){.transport-controls{grid-column:1/-1;grid-row:2}}
+    @media(max-width:600px){.section-title-copy,.transport-controls,.section-title-actions{grid-column:1;grid-row:auto}.transport-controls{justify-self:center;overflow-x:auto}.transport-controls .transport-panel{grid-column:auto;grid-row:auto}}
     .slot-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,48px);gap:7px;max-height:min(48vh,420px);overflow-y:auto;padding:2px}
     .slot-choice{width:48px;height:48px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font-weight:700}
     .slot-choice.occupied{border-color:color-mix(in srgb,var(--danger) 65%,var(--line));background:color-mix(in srgb,var(--danger) 17%,var(--panel));color:var(--danger)}
@@ -144,7 +147,22 @@
     <button id="tracks-tab" class="tab" role="tab" aria-selected="false" aria-controls="tracks-panel">Track List</button>
   </nav>
   <section id="loaded-panel" class="tab-panel" role="tabpanel" aria-labelledby="loaded-tab">
-    <div class="section-title"><div class="section-title-copy"><h3 id="changer-heading">Changer overview</h3><span id="slot-caption">Click a slot to load or unload</span></div><div class="transport-panel" role="group" aria-label="Home Assistant playback"><button type="button" class="transport-button" data-playback-action="previous_track"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h2v10H3zm10 1.5v7a.8.8 0 0 1-1.2.7l-5.5-3.5a.8.8 0 0 1 0-1.4l5.5-3.5a.8.8 0 0 1 1.2.7z"/></svg>Previous Track</button><button type="button" class="transport-button" data-playback-action="play"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.8c0-.7.8-1.1 1.4-.7l8 5.2a.8.8 0 0 1 0 1.4l-8 5.2a.8.8 0 0 1-1.4-.7z"/></svg>Play</button><button type="button" class="transport-button" data-playback-action="pause"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5h3.5v11H3zm6.5 0H13v11H9.5z"/></svg>Pause</button><button type="button" class="transport-button" data-playback-action="stop"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h10v10H3z"/></svg>Stop</button><button type="button" class="transport-button" data-playback-action="next_track"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 3h2v10h-2zM3 4.5v7a.8.8 0 0 0 1.2.7l5.5-3.5a.8.8 0 0 0 0-1.4L4.2 3.8A.8.8 0 0 0 3 4.5z"/></svg>Next Track</button></div><div class="section-title-actions"><div class="views" role="group" aria-label="Changer layout"><button type="button" data-slot-layout="cover-grid" aria-pressed="true">Covers</button><button type="button" data-slot-layout="donut" aria-pressed="false">Carousel</button></div><div class="stat"><b id="loaded-count">0 / 101</b><span>slots occupied</span></div></div></div>
+    <div class="section-title">
+      <div class="section-title-copy"><h3 id="changer-heading">Changer overview</h3><span id="slot-caption">Click a slot to load or unload</span></div>
+      <div class="transport-controls">
+        <div class="power-control" role="group" aria-label="Power">
+          <button type="button" class="transport-button" data-playback-action="power"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7 1h2v7H7zM4.05 3.05l1.42 1.42A5 5 0 1 0 10.53 4.5l1.42-1.42A7 7 0 1 1 4.05 3.05z"/></svg>Power</button>
+        </div>
+        <div class="transport-panel" role="group" aria-label="Home Assistant playback">
+          <button type="button" class="transport-button" data-playback-action="previous_track"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h2v10H3zm10 1.5v7a.8.8 0 0 1-1.2.7l-5.5-3.5a.8.8 0 0 1 0-1.4l5.5-3.5a.8.8 0 0 1 1.2.7z"/></svg>Previous Track</button>
+          <button type="button" class="transport-button" data-playback-action="play"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.8c0-.7.8-1.1 1.4-.7l8 5.2a.8.8 0 0 1 0 1.4l-8 5.2a.8.8 0 0 1-1.4-.7z"/></svg>Play</button>
+          <button type="button" class="transport-button" data-playback-action="pause"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5h3.5v11H3zm6.5 0H13v11H9.5z"/></svg>Pause</button>
+          <button type="button" class="transport-button" data-playback-action="stop"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h10v10H3z"/></svg>Stop</button>
+          <button type="button" class="transport-button" data-playback-action="next_track"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 3h2v10h-2zM3 4.5v7a.8.8 0 0 0 1.2.7l5.5-3.5a.8.8 0 0 0 0-1.4L4.2 3.8A.8.8 0 0 0 3 4.5z"/></svg>Next Track</button>
+        </div>
+      </div>
+      <div class="section-title-actions"><div class="views" role="group" aria-label="Changer layout"><button type="button" data-slot-layout="cover-grid" aria-pressed="true">Covers</button><button type="button" data-slot-layout="donut" aria-pressed="false">Carousel</button></div><div class="stat"><b id="loaded-count">0 / 101</b><span>slots occupied</span></div></div>
+    </div>
     <div class="changer-slots" aria-live="polite">
       <div class="regular-slots"><h4>Slots 1–100</h4><div id="slot-grid" class="slot-grid"></div></div>
       <div class="special-slot-area"><div class="special-slot-heading"><b>Special-use position</b><span>Slot 0 · separate from slots 1–100</span></div><div id="slot-zero"></div></div>

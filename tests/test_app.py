@@ -501,11 +501,18 @@ class CdLibraryTestCase(unittest.TestCase):
         self.assertNotIn(b'data-slot-layout="grid"', page_content)
         self.assertNotIn(b'"grid","cover-grid","donut"', page_content)
         self.assertIn(b'class="transport-panel" role="group"', page_content)
+        self.assertIn(b'class="transport-controls"', page_content)
+        self.assertIn(b'class="power-control" role="group" aria-label="Power"', page_content)
+        self.assertLess(
+            page_content.index(b'class="power-control"'),
+            page_content.index(b'class="transport-panel"'),
+        )
         self.assertIn(b'data-playback-action="previous_track"', page_content)
         self.assertIn(b'data-playback-action="next_track"', page_content)
         self.assertIn(b'data-playback-action="stop"', page_content)
         self.assertIn(b'data-playback-action="pause"', page_content)
         self.assertIn(b'data-playback-action="play"', page_content)
+        self.assertIn(b'data-playback-action="power"', page_content)
         self.assertIn(b'class="transport-button" data-playback-action="stop"><svg', page_content)
         self.assertIn(b'class="transport-button" data-playback-action="pause"><svg', page_content)
         self.assertIn(b'class="transport-button" data-playback-action="play"><svg', page_content)
@@ -907,6 +914,7 @@ class CdLibraryTestCase(unittest.TestCase):
             "stop": "stop",
             "pause": "pause",
             "play": "play",
+            "power": "power",
             "next_track": "next_track",
             "previous_track": "previous_track",
         }

@@ -41,6 +41,8 @@ authentication, so restrict access to trusted devices and networks.
   is accepted.
 - Use the Stop, Pause, and Play controls beside the changer layout buttons to
   run the corresponding Home Assistant scripts.
+- Use the Power button in the transport controls to call the configured Home
+  Assistant `script.power` service.
 - Store the catalog and uploaded cover art in a persistent SQLite data
   directory.
 - Download selected MusicBrainz and Discogs cover art into the local catalog.

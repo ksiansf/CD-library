@@ -257,7 +257,7 @@ class CdLibraryHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = urllib.parse.urlsplit(self.path).path
         match = re.fullmatch(
-            r"/api/home-assistant/transport/(play|pause|stop|next_track|previous_track)",
+            r"/api/home-assistant/transport/(play|pause|stop|power|next_track|previous_track)",
             path,
         )
         if match:
