@@ -22,13 +22,29 @@ authentication, so restrict access to trusted devices and networks.
   artist, album, year, duration, and changer slot.
 - View the CD library in Gallery or Detailed view. Hover over a CD or loaded
   slot to see its track list.
+- In the **CD Carousel** tab, choose Covers or Carousel. Covers shows larger
+  CD artwork while keeping all changer slots available.
 - Load and unload CDs, move a loaded CD, or replace the CD assigned to a slot.
   Selecting a loaded slot lets you unload its CD, swap it with a CD in another
   loaded slot, or move it to an empty slot. Slot 0 is shown separately in the
   load picker.
 - Choose light or dark theme.
+- Open **Settings** to add or replace the Discogs personal access token. The
+  saved token is kept on the server and is never returned to the browser.
+- Configure the Home Assistant server address and API key from **Settings**;
+  the saved key is write-only and is never returned to the browser.
+- Use the play control on a loaded changer slot to play its first track through
+  Home Assistant. In Carousel mode, the play control targets the CD currently
+  shown at the 12 o'clock position.
+- Choose **Play Track** on a loaded slot to select a saved track; the selected
+  track number is sent to Home Assistant and the picker closes after playback
+  is accepted.
+- Use the Stop, Pause, and Play controls beside the changer layout buttons to
+  run the corresponding Home Assistant scripts.
 - Store the catalog and uploaded cover art in a persistent SQLite data
   directory.
+- Download selected MusicBrainz and Discogs cover art into the local catalog.
+  Existing remote cover links are migrated automatically when Groovebox starts.
 
 ## Proxmox deployment
 
@@ -173,6 +189,7 @@ and local path with yours):
 
 ```powershell
 scp -r "C:\path\to\CD library\app.py" `
+  "C:\path\to\CD library\cd_library" `
   "C:\path\to\CD library\compose.yaml" `
   "C:\path\to\CD library\Dockerfile" `
   "C:\path\to\CD library\requirements.txt" `
@@ -185,6 +202,7 @@ The directory copied to `/opt/groovebox` should contain at least:
 
 ```text
 app.py
+cd_library/
 compose.yaml
 Dockerfile
 requirements.txt
@@ -201,6 +219,27 @@ overwrite the LXC's existing settings or collection data.
 
 Metadata lookup from MusicBrainz does not require an account. Discogs lookup
 needs either a consumer key and consumer secret or a personal access token.
+After starting the app, you can add or replace a personal access token from
+**Settings → API keys**. The app stores this token in `data/settings.json`
+with owner-only file permissions on POSIX systems; it is not returned by the
+settings API and takes precedence over a token configured through environment
+variables. The file is persisted by the Docker `data/` volume. The token is
+not encrypted at rest, so protect the data directory and its backups. Anyone
+who can access this unauthenticated app can change its settings, so keep it
+restricted to a trusted network.
+
+The same settings page accepts `HOME_ASSISTANT_ADDRESS` and
+`HOME_ASSISTANT_API_KEY`. These can also be supplied through `.env`; values
+saved from the settings page are stored in the same protected
+`data/settings.json` file. The API key is never returned to the browser. The
+address must use HTTP or HTTPS and must not contain credentials, a query, or a
+fragment.
+
+The Settings page also lets you upload a custom image for the centered CD
+changer picture. JPEG, PNG, WebP, and GIF files up to 5 MB are supported. The
+image is stored in the application data directory and served by the app; when
+no custom image is uploaded, the bundled changer image is shown.
+
 To configure Discogs after installation (or if you skipped the credentials
 prompt in the Proxmox installer), create/edit the server-side `.env` file next
 to `compose.yaml`:
@@ -297,6 +336,17 @@ of what should be loaded in the physical changer; the application does not
 control or inspect the changer itself. Keeping `data/` intact therefore
 preserves both your collection and its recorded loaded-slot state.
 
+When a CD is saved with a MusicBrainz or Discogs cover, Groovebox downloads and
+validates the image and stores it in the catalog database. On startup, it also
+checks for older records that have a remote cover URL but no local image and
+migrates those covers automatically. This runs in the background, so the web
+app can start while covers are being migrated. If a provider is unavailable,
+the existing URL is retained and Groovebox retries the download at a later
+startup; failed downloads do not prevent CDs from being saved. Cover downloads
+are limited to supported provider hosts and image types, with a 5 MB maximum.
+The images are stored in the existing `data/` database and are included in the
+normal update backup.
+
 Before each update, make a backup and stop the service so the database is not
 being written during the backup:
 
@@ -311,7 +361,7 @@ available if the LXC itself has a problem.
 
 Using the transfer method in step 3 above, copy the new application files from
 your development computer to `/opt/groovebox`, overwriting only application
-files such as `app.py`, `static/`, `Dockerfile`, `requirements.txt`,
+files such as `app.py`, `cd_library/`, `static/`, `Dockerfile`, `requirements.txt`,
 `compose.yaml`, and `install.sh`. Do **not** copy your development `data/`,
 `.env`, or `.venv/` over the LXC files. Keep the existing `data/` and `.env`;
 review any intentional Compose changes before replacing `compose.yaml`.
@@ -420,7 +470,11 @@ choose another persistent directory and `PORT` to change the listening port.
 
 ## Project files
 
-- `app.py` — HTTP API, metadata lookups, and SQLite persistence.
+- `app.py` — application entry point and compatibility exports.
+- `cd_library/config.py` — runtime configuration and credential settings.
+- `cd_library/catalog.py` — SQLite schema, CD records, and track/cover data.
+- `cd_library/metadata.py` — MusicBrainz and Discogs integrations.
+- `cd_library/http.py` — HTTP API routes and request handling.
 - `static/index.html` — web interface.
 - `install.sh` — Debian 12 Docker setup, data backup, and app deployment.
 - `proxmox-install.sh` — Proxmox host helper to create an LXC and deploy the app.

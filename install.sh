@@ -27,7 +27,8 @@ trap restart_stopped_container ERR
 [[ "$EUID" -eq 0 ]] || fail "Run this script as root, for example: sudo bash install.sh"
 
 [[ -f "$APP_DIR/compose.yaml" && -f "$APP_DIR/Dockerfile" &&
-  -f "$APP_DIR/app.py" && -d "$APP_DIR/static" ]] ||
+  -f "$APP_DIR/app.py" && -d "$APP_DIR/cd_library" &&
+  -d "$APP_DIR/static" ]] ||
   fail "Run this script from a complete Groovebox project directory."
 
 [[ -r /etc/os-release ]] || fail "Cannot identify this operating system."
