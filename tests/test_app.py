@@ -485,6 +485,12 @@ class CdLibraryTestCase(unittest.TestCase):
         self.assertIn(b'id="home-assistant-address"', page_content)
         self.assertIn(b'id="home-assistant-api-key"', page_content)
         self.assertIn(b'id="home-assistant-settings-form"', page_content)
+        self.assertIn(b"refreshHomeAssistantAvailability()", page_content)
+        self.assertIn(
+            b"[data-playback-action],[data-play-slot],[data-track-list-play-slot],[data-play-track]",
+            page_content,
+        )
+        self.assertIn(b"settings.home_assistant_api_key_configured", page_content)
         self.assertIn(b'id="center-image-settings-form"', page_content)
         self.assertIn(b'id="center-image-file"', page_content)
         self.assertIn(b'/media/center-image', page_content)
