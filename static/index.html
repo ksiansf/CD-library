@@ -74,7 +74,9 @@
     .track-table th{position:sticky;top:0;background:var(--panel2);font-size:12px;color:var(--muted);white-space:nowrap}
     .track-table tbody tr:last-child td{border-bottom:0}
     .track-table tbody tr:hover{background:var(--panel2)}
-    .track-table td:first-child{font-weight:650}
+    .track-table td:nth-child(2){font-weight:650}
+    .track-table .track-number{width:1%;padding-right:8px;padding-left:8px;text-align:center;white-space:nowrap}
+    .track-table .track-play{width:1%;padding-right:8px;padding-left:8px}
     .track-table .track-muted{color:var(--muted)}
     .track-table .track-slot{white-space:nowrap}
     .btn.track-library-play{height:17px;padding:0 5px;font-size:10px;line-height:1;white-space:nowrap}
@@ -132,6 +134,34 @@
     .cover-grid-layout .special-slot-area{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));align-items:start}
     .cover-grid-layout .special-slot-heading{grid-column:1/-1}
     @media(max-width:480px){.cover-grid{grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:9px}}
+    @media(max-width:600px){
+      header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px}
+      .brand{grid-column:1;grid-row:1;min-width:0}
+      .head-actions{grid-column:2;grid-row:1}
+      .header-changer-frame{display:none}
+      .head-actions .btn{display:grid;width:42px;height:40px;place-items:center;padding:8px;font-size:0}
+      #theme-button::before{content:"☼";font-size:18px}
+      [data-theme=light] #theme-button::before{content:"☾"}
+      #settings-button::before{content:"⚙";font-size:18px}
+      .transport-controls{width:100%;flex-direction:row;align-items:center;gap:4px;overflow:visible}
+      .power-control{align-self:center}
+      .transport-controls .transport-panel{display:flex;width:auto;min-width:0;flex:1 1 0;gap:2px;padding:2px}
+      .transport-controls .transport-panel .transport-button{min-width:0;min-height:42px;flex:1 1 0;flex-direction:column;gap:0;padding:6px 2px;white-space:normal;font-size:0;line-height:1.2}
+      .transport-controls .transport-panel .transport-button svg{width:20px;height:20px}
+      .transport-controls .power-control .transport-button{font-size:0}
+      .transport-controls .power-control .transport-button svg{width:18px;height:18px}
+      .carousel-feature-tracks,.carousel-feature-empty{display:none}
+      .donut-layout .carousel-feature{justify-content:center}
+      .donut-layout .carousel-feature-main-play{top:16%}
+      .donut-layout .carousel-feature-track-picker{bottom:16%}
+    }
+    @media(max-width:420px){
+      header{grid-template-columns:minmax(0,1fr) auto}
+      .brand{grid-column:1}
+      .head-actions{grid-column:2}
+      .brand{grid-row:1}
+      .head-actions{grid-row:1;margin-left:0}
+    }
   </style>
 </head>
 <body>
@@ -151,14 +181,14 @@
       <div class="section-title-copy"><h3 id="changer-heading">Changer overview</h3><span id="slot-caption">Click a slot to load or unload</span></div>
       <div class="transport-controls">
         <div class="power-control" role="group" aria-label="Power">
-          <button type="button" class="transport-button" data-playback-action="power"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7 1h2v7H7zM4.05 3.05l1.42 1.42A5 5 0 1 0 10.53 4.5l1.42-1.42A7 7 0 1 1 4.05 3.05z"/></svg>Power</button>
+          <button type="button" class="transport-button" data-playback-action="power" aria-label="Power"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7 1h2v7H7zM4.05 3.05l1.42 1.42A5 5 0 1 0 10.53 4.5l1.42-1.42A7 7 0 1 1 4.05 3.05z"/></svg>Power</button>
         </div>
         <div class="transport-panel" role="group" aria-label="Home Assistant playback">
-          <button type="button" class="transport-button" data-playback-action="previous_track"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h2v10H3zm10 1.5v7a.8.8 0 0 1-1.2.7l-5.5-3.5a.8.8 0 0 1 0-1.4l5.5-3.5a.8.8 0 0 1 1.2.7z"/></svg>Previous Track</button>
-          <button type="button" class="transport-button" data-playback-action="play"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.8c0-.7.8-1.1 1.4-.7l8 5.2a.8.8 0 0 1 0 1.4l-8 5.2a.8.8 0 0 1-1.4-.7z"/></svg>Play</button>
-          <button type="button" class="transport-button" data-playback-action="pause"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5h3.5v11H3zm6.5 0H13v11H9.5z"/></svg>Pause</button>
-          <button type="button" class="transport-button" data-playback-action="stop"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h10v10H3z"/></svg>Stop</button>
-          <button type="button" class="transport-button" data-playback-action="next_track"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 3h2v10h-2zM3 4.5v7a.8.8 0 0 0 1.2.7l5.5-3.5a.8.8 0 0 0 0-1.4L4.2 3.8A.8.8 0 0 0 3 4.5z"/></svg>Next Track</button>
+          <button type="button" class="transport-button" data-playback-action="previous_track" aria-label="Previous Track"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h2v10H3zm10 1.5v7a.8.8 0 0 1-1.2.7l-5.5-3.5a.8.8 0 0 1 0-1.4l5.5-3.5a.8.8 0 0 1 1.2.7z"/></svg>Previous Track</button>
+          <button type="button" class="transport-button" data-playback-action="play" aria-label="Play"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.8c0-.7.8-1.1 1.4-.7l8 5.2a.8.8 0 0 1 0 1.4l-8 5.2a.8.8 0 0 1-1.4-.7z"/></svg>Play</button>
+          <button type="button" class="transport-button" data-playback-action="pause" aria-label="Pause"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5h3.5v11H3zm6.5 0H13v11H9.5z"/></svg>Pause</button>
+          <button type="button" class="transport-button" data-playback-action="stop" aria-label="Stop"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h10v10H3z"/></svg>Stop</button>
+          <button type="button" class="transport-button" data-playback-action="next_track" aria-label="Next Track"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 3h2v10h-2zM3 4.5v7a.8.8 0 0 0 1.2.7l5.5-3.5a.8.8 0 0 0 0-1.4L4.2 3.8A.8.8 0 0 0 3 4.5z"/></svg>Next Track</button>
         </div>
       </div>
       <div class="section-title-actions"><div class="views" role="group" aria-label="Changer layout"><button type="button" data-slot-layout="cover-grid" aria-pressed="true">Covers</button><button type="button" data-slot-layout="donut" aria-pressed="false">Carousel</button></div><div class="stat"><b id="loaded-count">0 / 101</b><span>slots occupied</span></div></div>
@@ -322,7 +352,7 @@ function renderTracks(){
     root.innerHTML=`<div class="track-empty">${state.trackQuery?"No matching tracks. Try a different search.":"No tracks in your collection yet."}</div>`;
     return
   }
-  root.innerHTML=`<div class="track-table-wrap"><table class="track-table"><thead><tr><th scope="col">Track #</th><th scope="col">Track</th><th scope="col">Artist</th><th scope="col">Album</th><th scope="col">Year</th><th scope="col">Duration</th><th scope="col">Slot</th><th scope="col">Play</th></tr></thead><tbody>${tracks.map(track=>`<tr tabindex="0" data-track-cover="${esc(track.cover||"")}" data-album="${esc(track.album)}"><td>${track.position}</td><td>${esc(track.title)}</td><td>${esc(track.artist||"Unknown artist")}</td><td>${esc(track.album)}</td><td>${esc(track.year||"—")}</td><td>${esc(track.duration||"—")}</td><td class="track-slot">${track.slot===null||track.slot===undefined?'<span class="track-muted">Not loaded</span>':`Slot ${track.slot}`}</td><td>${track.slot===null||track.slot===undefined?"":`<button class="btn small primary track-library-play" type="button" data-track-list-play-slot="${track.slot}" data-track-list-play-position="${track.position}" aria-label="Play ${esc(track.title)} from slot ${track.slot}">▶ Play</button>`}</td></tr>`).join("")}</tbody></table></div>`;
+  root.innerHTML=`<div class="track-table-wrap"><table class="track-table"><thead><tr><th class="track-play" scope="col">Play</th><th class="track-number" scope="col">#</th><th scope="col">Track</th><th scope="col">Artist</th><th scope="col">Album</th><th scope="col">Year</th><th scope="col">Duration</th><th scope="col">Slot</th></tr></thead><tbody>${tracks.map(track=>`<tr tabindex="0" data-track-cover="${esc(track.cover||"")}" data-album="${esc(track.album)}"><td class="track-play">${track.slot===null||track.slot===undefined?"":`<button class="btn small primary track-library-play" type="button" data-track-list-play-slot="${track.slot}" data-track-list-play-position="${track.position}" aria-label="Play ${esc(track.title)} from slot ${track.slot}">▶ Play</button>`}</td><td class="track-number">${track.position}</td><td>${esc(track.title)}</td><td>${esc(track.artist||"Unknown artist")}</td><td>${esc(track.album)}</td><td>${esc(track.year||"—")}</td><td>${esc(track.duration||"—")}</td><td class="track-slot">${track.slot===null||track.slot===undefined?'<span class="track-muted">Not loaded</span>':`Slot ${track.slot}`}</td></tr>`).join("")}</tbody></table></div>`;
   applyHomeAssistantAvailability()
 }
 async function refreshTracks(){try{state.tracks=await api(`/api/tracks?q=${encodeURIComponent(state.trackQuery)}`);renderTracks()}catch(error){toast(error.message,true)}}
