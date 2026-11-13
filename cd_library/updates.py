@@ -16,6 +16,7 @@ from . import config
 GITHUB_RELEASE_URL = "https://api.github.com/repos/ksiansf/CD-library/releases/latest"
 MAX_RELEASE_RESPONSE_BYTES = 1024 * 1024
 UPDATE_HELPER_MARKER = ".update-helper-installed"
+UPDATE_TRIGGER_FILE = ".update-trigger"
 _enqueue_lock = threading.Lock()
 
 
@@ -161,6 +162,14 @@ def _write_json_atomically(path, payload, exclusive=False):
         raise
 
 
+def _trigger_host_update(request_id):
+    trigger_path = config.DATA_DIR / UPDATE_TRIGGER_FILE
+    with trigger_path.open("w", encoding="utf-8") as trigger_file:
+        trigger_file.write(request_id)
+        trigger_file.flush()
+        os.fsync(trigger_file.fileno())
+
+
 def enqueue_update():
     if not helper_is_available():
         raise UpdateRequestError("The host update service is not installed.")
@@ -189,4 +198,9 @@ def enqueue_update():
             raise UpdateRequestError(
                 "An application update is already queued."
             ) from error
+        try:
+            _trigger_host_update(request_id)
+        except OSError:
+            request_path.unlink(missing_ok=True)
+            raise
         return request_id

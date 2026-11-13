@@ -680,6 +680,7 @@ class CdLibraryTestCase(unittest.TestCase):
     def test_update_request_queues_fixed_release_only_when_available(self):
         marker = cd_app.config.DATA_DIR / cd_app.updates.UPDATE_HELPER_MARKER
         marker.touch()
+        (cd_app.config.DATA_DIR / cd_app.updates.UPDATE_TRIGGER_FILE).touch()
         with patch.object(
             cd_app.updates,
             "check_for_updates",
@@ -691,6 +692,11 @@ class CdLibraryTestCase(unittest.TestCase):
             request_path = cd_app.config.DATA_DIR / "update-request.json"
             request = json.loads(request_path.read_text(encoding="utf-8"))
             self.assertEqual(request["request_id"], queued["request_id"])
+            self.assertEqual(
+                (cd_app.config.DATA_DIR / cd_app.updates.UPDATE_TRIGGER_FILE)
+                .read_text(encoding="utf-8"),
+                queued["request_id"],
+            )
             status, error = self.request("/api/updates", "POST", {})
         self.assertEqual(status, 409)
         self.assertIn("already", error["error"])

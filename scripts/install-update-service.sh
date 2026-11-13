@@ -21,6 +21,9 @@ mkdir -p "$APP_DIR/data" "$HELPER_DIR"
 install -m 0755 "$APP_DIR/scripts/groovebox_update.py" \
   "$HELPER_DIR/groovebox-update.py"
 install -m 0644 /dev/null "$APP_DIR/data/.update-helper-installed"
+if [[ ! -e "$APP_DIR/data/.update-trigger" ]]; then
+  install -m 0644 /dev/null "$APP_DIR/data/.update-trigger"
+fi
 
 cat > /etc/systemd/system/groovebox-update.service <<UNIT
 [Unit]
@@ -39,7 +42,7 @@ cat > /etc/systemd/system/groovebox-update.path <<UNIT
 Description=Watch for Groovebox update requests
 
 [Path]
-PathChanged="$APP_DIR/data/update-request.json"
+PathChanged=$APP_DIR/data/.update-trigger
 Unit=groovebox-update.service
 
 [Install]
