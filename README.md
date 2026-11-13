@@ -31,6 +31,8 @@ authentication, so restrict access to trusted devices and networks.
 - Choose light or dark theme.
 - Open **Settings** to add or replace the Discogs personal access token. The
   saved token is kept on the server and is never returned to the browser.
+- Check for and install published GitHub releases from **Settings** on
+  installer-managed Debian deployments.
 - Configure the Home Assistant server address and API key from **Settings**;
   the saved key is write-only and is never returned to the browser.
 - Use the play control on a loaded changer slot to play its first track through
@@ -363,8 +365,9 @@ available if the LXC itself has a problem.
 
 Using the transfer method in step 3 above, copy the new application files from
 your development computer to `/opt/groovebox`, overwriting only application
-files such as `app.py`, `cd_library/`, `static/`, `Dockerfile`, `requirements.txt`,
-`compose.yaml`, and `install.sh`. Do **not** copy your development `data/`,
+files such as `app.py`, `cd_library/`, `static/`, `media/`, `scripts/`,
+`VERSION`, `Dockerfile`, `requirements.txt`, `compose.yaml`, and `install.sh`.
+Do **not** copy your development `data/`,
 `.env`, or `.venv/` over the LXC files. Keep the existing `data/` and `.env`;
 review any intentional Compose changes before replacing `compose.yaml`.
 
@@ -394,6 +397,27 @@ upgrade path is known to be compatible.
 
 The Compose service uses `restart: unless-stopped`, so Docker will start the
 app again when the Docker daemon or LXC restarts.
+
+On installations set up with `bash ./install.sh` or the Proxmox installer,
+open **Settings → Application updates** and choose **Check for updates**.
+When a newer published GitHub release is available, choose **Install update**.
+The host helper downloads only the latest release from the fixed
+`ksiansf/CD-library` repository, creates the normal pre-update `data/` backup,
+rebuilds the Compose application, and restarts it. The collection and `.env`
+are preserved. The page reconnects when the update finishes.
+
+The web container is not given access to the Docker socket. Instead,
+`install.sh` installs a small systemd path/service pair on the Debian host
+which accepts a fixed update request from the app's data volume. The helper
+runs as root because rebuilding the Compose service requires host privileges.
+The app has no built-in authentication, so keep its web port restricted to
+trusted devices and networks. Automatic updates are unavailable for deployments
+that did not install this host helper; those can continue using the manual
+procedure above.
+
+The update checker compares the installed `VERSION` tag with GitHub's latest
+non-prerelease release. If preparing a release for manual installation, set
+the repository's `VERSION` file to that release's tag.
 
 ## Backups and restore
 

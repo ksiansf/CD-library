@@ -481,6 +481,15 @@
         color: var(--muted);
         font-size: 13px;
       }
+      .settings-form-update {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+      }
+      .settings-form-update > .settings-status {
+        flex-basis: 100%;
+      }
       .settings-section .settings-form-center-image {
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: start;
@@ -2604,6 +2613,39 @@
             />
           </form>
         </section>
+        <section class="settings-section" aria-labelledby="updates-heading">
+          <h3 id="updates-heading">Application updates</h3>
+          <p>
+            Check GitHub for a published release. Installing an update backs
+            up your collection, rebuilds the application, and briefly restarts
+            the service.
+          </p>
+          <div class="settings-form-update">
+            <button id="check-updates" class="btn" type="button">
+              Check for updates
+            </button>
+            <button
+              id="install-update"
+              class="btn primary"
+              type="button"
+              hidden
+            >
+              Install update
+            </button>
+            <a
+              id="view-release"
+              class="btn"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              hidden
+              >View release</a
+            >
+            <p id="updates-status" class="settings-status" role="status">
+              Updates are checked when you open Settings.
+            </p>
+          </div>
+        </section>
       </section>
     </main>
     <div id="slot-tooltip" class="slot-tooltip" role="tooltip" hidden></div>
@@ -3042,6 +3084,7 @@
           "Checking Home Assistant configuration…";
         $("#center-image-settings-status").textContent =
           "Checking center image…";
+        checkForUpdates();
         api("/api/settings")
           .then((result) => {
             $("#discogs-settings-status").textContent =
@@ -3074,6 +3117,75 @@
       }
       function closeSettings() {
         setTab(state.activeTab);
+      }
+      async function checkForUpdates() {
+        const checkButton = $("#check-updates"),
+          installButton = $("#install-update"),
+          releaseLink = $("#view-release"),
+          status = $("#updates-status");
+        checkButton.disabled = true;
+        installButton.hidden = true;
+        releaseLink.hidden = true;
+        status.textContent = "Checking GitHub for a published release…";
+        try {
+          const result = await api("/api/updates");
+          releaseLink.href = result.release_url;
+          releaseLink.hidden = false;
+          if (!result.update_available) {
+            status.textContent = `You are running the latest published release (${result.current_version}).`;
+            return;
+          }
+          if (result.update_helper_available) {
+            status.textContent = `Release ${result.latest_version} is available (installed: ${result.current_version}).`;
+            installButton.hidden = false;
+          } else {
+            status.textContent = `Release ${result.latest_version} is available, but automatic updates are not installed. Run install.sh on the host to enable them.`;
+          }
+        } catch (error) {
+          status.textContent = "Could not check for application updates.";
+          toast(error.message, true);
+        } finally {
+          checkButton.disabled = false;
+        }
+      }
+      async function pollUpdateStatus(requestId, startedAt) {
+        const statusElement = $("#updates-status"),
+          installButton = $("#install-update"),
+          checkButton = $("#check-updates");
+        if (Date.now() - startedAt > 10 * 60 * 1000) {
+          statusElement.textContent =
+            "The update is taking longer than expected. Check the host update service log, then refresh this page.";
+          installButton.disabled = false;
+          checkButton.disabled = false;
+          return;
+        }
+        try {
+          const result = await api("/api/updates/status");
+          if (result.request_id === requestId && result.state === "completed") {
+            statusElement.textContent = result.message;
+            setTimeout(() => window.location.reload(), 1500);
+            return;
+          }
+          if (result.request_id === requestId && result.state === "failed") {
+            statusElement.textContent = result.message;
+            installButton.disabled = false;
+            checkButton.disabled = false;
+            return;
+          }
+          if (result.request_id === requestId && result.state === "no_update") {
+            statusElement.textContent = result.message;
+            installButton.disabled = false;
+            checkButton.disabled = false;
+            return;
+          }
+          if (result.request_id === requestId && result.message) {
+            statusElement.textContent = result.message;
+          }
+        } catch {
+          statusElement.textContent =
+            "The application is restarting to install the update…";
+        }
+        setTimeout(() => pollUpdateStatus(requestId, startedAt), 3000);
       }
       async function refresh() {
         try {
@@ -4005,6 +4117,33 @@
       $("#tracks-tab").onclick = () => setTab("tracks");
       $("#settings-button").onclick = openSettings;
       $("#close-settings").onclick = closeSettings;
+      $("#check-updates").onclick = checkForUpdates;
+      $("#install-update").onclick = async () => {
+        if (
+          !window.confirm(
+            "Install the latest published release? The application will restart briefly.",
+          )
+        )
+          return;
+        const button = $("#install-update");
+        button.disabled = true;
+        $("#check-updates").disabled = true;
+        $("#updates-status").textContent = "Queueing the application update…";
+        try {
+          const result = await api("/api/updates", {
+            method: "POST",
+            body: JSON.stringify({}),
+          });
+          $("#updates-status").textContent =
+            "Update queued. The application will restart briefly.";
+          pollUpdateStatus(result.request_id, Date.now());
+        } catch (error) {
+          $("#updates-status").textContent = "Could not start the update.";
+          toast(error.message, true);
+          button.disabled = false;
+          $("#check-updates").disabled = false;
+        }
+      };
       $("#discogs-settings-form").onsubmit = async (event) => {
         event.preventDefault();
         const input = $("#discogs-token"),

@@ -4,7 +4,7 @@ import os
 import threading
 from http.server import ThreadingHTTPServer
 
-from cd_library import catalog, config, metadata
+from cd_library import catalog, config, metadata, updates
 from cd_library.catalog import (
     cd_payload,
     clean_text,
@@ -68,6 +68,7 @@ __all__ = [
     "save_application_settings",
     "save_cd",
     "validate_home_assistant_address",
+    "updates",
 ]
 
 

@@ -150,8 +150,9 @@ curl --fail --location --silent --show-error --retry 3 "$ARCHIVE_URL" -o "$TEMP_
 mkdir "$TEMP_DIR/source"
 tar -xzf "$TEMP_DIR/source.tar.gz" --strip-components=1 -C "$TEMP_DIR/source"
 [[ -f "$TEMP_DIR/source/compose.yaml" && -f "$TEMP_DIR/source/Dockerfile" &&
-  -f "$TEMP_DIR/source/app.py" && -d "$TEMP_DIR/source/cd_library" &&
-  -d "$TEMP_DIR/source/static" ]] ||
+  -f "$TEMP_DIR/source/app.py" && -f "$TEMP_DIR/source/VERSION" &&
+  -f "$TEMP_DIR/source/scripts/install-update-service.sh" &&
+  -d "$TEMP_DIR/source/cd_library" && -d "$TEMP_DIR/source/static" ]] ||
   fail "The selected GitHub branch does not contain a complete Groovebox project at its root."
 
 tar -czf "$TEMP_DIR/groovebox.tar.gz" \
@@ -322,6 +323,7 @@ mkdir -p data
 docker compose config --quiet
 docker compose up --build --detach
 docker compose ps
+bash /opt/groovebox/scripts/install-update-service.sh
 INNER_SCRIPT
 
   pct push "$CTID" "$TEMP_DIR/install-in-container.sh" /root/install-groovebox.sh

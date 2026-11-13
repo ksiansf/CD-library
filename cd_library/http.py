@@ -11,7 +11,7 @@ import urllib.request
 import certifi
 from http.server import BaseHTTPRequestHandler
 
-from . import catalog, config, covers, metadata
+from . import catalog, config, covers, metadata, updates as update_service
 
 
 def save_cd(payload, cd_id=None):
@@ -127,6 +127,26 @@ class CdLibraryHandler(BaseHTTPRequestHandler):
                 "home_assistant_api_key_configured": settings["api_key_configured"],
                 "center_image_configured": settings["center_image_configured"],
             })
+            return
+        if path == "/api/updates":
+            try:
+                self.send_json(update_service.check_for_updates())
+            except update_service.ReleaseCheckError as error:
+                print(f"Could not check for application updates: {error}")
+                self.send_error_json(str(error), 502)
+            except RuntimeError as error:
+                print(f"Could not read application version: {error}")
+                self.send_error_json(str(error), 500)
+            return
+        if path == "/api/updates/status":
+            if not update_service.helper_is_available():
+                self.send_json({"state": "unavailable"})
+                return
+            try:
+                self.send_json(update_service.read_status())
+            except RuntimeError as error:
+                print(f"Could not read application update status: {error}")
+                self.send_error_json(str(error), 500)
             return
         if path == "/api/cds":
             parameters = urllib.parse.parse_qs(parsed.query)
@@ -256,6 +276,42 @@ class CdLibraryHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urllib.parse.urlsplit(self.path).path
+        if path == "/api/updates":
+            try:
+                payload = self.read_json()
+            except ValueError as error:
+                self.send_error_json(str(error))
+                return
+            if payload:
+                self.send_error_json("Update requests do not accept options.")
+                return
+            if not update_service.helper_is_available():
+                self.send_error_json("The host update service is not installed.", 503)
+                return
+            try:
+                release = update_service.check_for_updates()
+            except update_service.ReleaseCheckError as error:
+                print(f"Could not check for application updates: {error}")
+                self.send_error_json(str(error), 502)
+                return
+            except RuntimeError as error:
+                print(f"Could not read application version: {error}")
+                self.send_error_json(str(error), 500)
+                return
+            if not release["update_available"]:
+                self.send_error_json("The application is already up to date.", 409)
+                return
+            try:
+                request_id = update_service.enqueue_update()
+            except update_service.UpdateRequestError as error:
+                self.send_error_json(str(error), 409)
+                return
+            except (OSError, RuntimeError) as error:
+                print(f"Could not queue application update: {error}")
+                self.send_error_json("Could not queue the application update.", 500)
+                return
+            self.send_json({"request_id": request_id, "state": "queued"}, 202)
+            return
         match = re.fullmatch(
             r"/api/home-assistant/transport/(play|pause|stop|power|next_track|previous_track)",
             path,

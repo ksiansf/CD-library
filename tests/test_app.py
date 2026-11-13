@@ -650,6 +650,71 @@ class CdLibraryTestCase(unittest.TestCase):
             ).stat().st_mode & 0o777
             self.assertEqual(settings_mode, 0o600)
 
+    def test_update_check_reports_latest_release_and_helper_availability(self):
+        release = {
+            "tag_name": "v2.0.0",
+            "html_url": "https://github.com/ksiansf/CD-library/releases/tag/v2.0.0",
+            "published_at": "2026-11-12T12:00:00Z",
+        }
+        with patch.object(cd_app.updates, "fetch_latest_release", return_value=release):
+            status, result = self.request("/api/updates")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(result["current_version"], "new")
+        self.assertEqual(result["latest_version"], "v2.0.0")
+        self.assertTrue(result["update_available"])
+        self.assertFalse(result["update_helper_available"])
+        (cd_app.config.DATA_DIR / cd_app.updates.UPDATE_HELPER_MARKER).touch()
+        with patch.object(cd_app.updates, "fetch_latest_release", return_value=release):
+            status, result = self.request("/api/updates")
+        self.assertEqual(status, 200)
+        self.assertTrue(result["update_helper_available"])
+
+    def test_settings_page_shows_update_controls(self):
+        page = urllib.request.urlopen(self.base_url + "/")
+        page_content = page.read()
+        self.assertIn(b'id="check-updates"', page_content)
+        self.assertIn(b'id="install-update"', page_content)
+        self.assertIn(b'id="updates-status"', page_content)
+
+    def test_update_request_queues_fixed_release_only_when_available(self):
+        marker = cd_app.config.DATA_DIR / cd_app.updates.UPDATE_HELPER_MARKER
+        marker.touch()
+        with patch.object(
+            cd_app.updates,
+            "check_for_updates",
+            return_value={"update_available": True},
+        ):
+            status, queued = self.request("/api/updates", "POST", {})
+            self.assertEqual(status, 202)
+            self.assertEqual(queued["state"], "queued")
+            request_path = cd_app.config.DATA_DIR / "update-request.json"
+            request = json.loads(request_path.read_text(encoding="utf-8"))
+            self.assertEqual(request["request_id"], queued["request_id"])
+            status, error = self.request("/api/updates", "POST", {})
+        self.assertEqual(status, 409)
+        self.assertIn("already", error["error"])
+
+    def test_update_request_rejects_missing_helper_and_current_release(self):
+        with patch.object(
+            cd_app.updates,
+            "check_for_updates",
+            return_value={"update_available": True},
+        ):
+            status, error = self.request("/api/updates", "POST", {})
+        self.assertEqual(status, 503)
+        self.assertIn("not installed", error["error"])
+
+        (cd_app.config.DATA_DIR / cd_app.updates.UPDATE_HELPER_MARKER).touch()
+        with patch.object(
+            cd_app.updates,
+            "check_for_updates",
+            return_value={"update_available": False},
+        ):
+            status, error = self.request("/api/updates", "POST", {})
+        self.assertEqual(status, 409)
+        self.assertIn("up to date", error["error"])
+
     def test_discogs_token_settings_reject_empty_tokens(self):
         status, error = self.request(
             "/api/settings/discogs",
