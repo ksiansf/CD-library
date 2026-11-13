@@ -487,8 +487,22 @@
         align-items: center;
         gap: 10px;
       }
+      .settings-form-update > button,
+      .settings-form-update > a {
+        order: 1;
+      }
+      .settings-form-update > #view-release {
+        order: 2;
+        flex: 0 0 100%;
+        text-align: right;
+      }
       .settings-form-update > .settings-status {
-        flex-basis: 100%;
+        order: 0;
+        flex: 0 1 420px;
+        min-width: 0;
+      }
+      .settings-form-update > button:first-of-type {
+        margin-left: auto;
       }
       .settings-section .settings-form-center-image {
         grid-template-columns: minmax(0, 1fr) auto;
@@ -2634,7 +2648,6 @@
             </button>
             <a
               id="view-release"
-              class="btn"
               href="#"
               target="_blank"
               rel="noopener noreferrer"

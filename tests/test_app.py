@@ -675,7 +675,17 @@ class CdLibraryTestCase(unittest.TestCase):
         page_content = page.read()
         self.assertIn(b'id="check-updates"', page_content)
         self.assertIn(b'id="install-update"', page_content)
+        self.assertIn(b'id="view-release"', page_content)
+        self.assertNotIn(b'id="view-release" class="btn"', page_content)
         self.assertIn(b'id="updates-status"', page_content)
+        self.assertIn(b".settings-form-update > .settings-status", page_content)
+        self.assertIn(b"order: 0", page_content)
+        self.assertIn(b"flex: 0 1 420px", page_content)
+        self.assertIn(b".settings-form-update > button:first-of-type", page_content)
+        self.assertIn(b".settings-form-update > #view-release", page_content)
+        self.assertIn(b"order: 2", page_content)
+        self.assertIn(b"flex: 0 0 100%", page_content)
+        self.assertIn(b"text-align: right", page_content)
 
     def test_update_request_queues_fixed_release_only_when_available(self):
         marker = cd_app.config.DATA_DIR / cd_app.updates.UPDATE_HELPER_MARKER
