@@ -7,6 +7,10 @@ home network and can be deployed with Docker Compose.
 The application records which CD is assigned to each changer slot (0–100); it
 does not control the physical changer. There are no user accounts or built-in
 authentication, so restrict access to trusted devices and networks.
+<img width="1432" height="915" alt="image" src="https://github.com/user-attachments/assets/92ca4412-a2bf-49b3-af48-10360d96cb89" />
+<img width="1432" height="1148" alt="image" src="https://github.com/user-attachments/assets/01352ff3-184f-4523-9519-b0fe18bce755" />
+<img width="1415" height="826" alt="image" src="https://github.com/user-attachments/assets/2d2b486f-333b-498a-a9b4-af008efaf933" />
+<img width="1418" height="805" alt="image" src="https://github.com/user-attachments/assets/90bca18d-083e-461c-b5a4-1861c3f36df8" />
 
 ## Features
 
